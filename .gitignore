@@ -6,3 +6,7 @@ bash*
 **/libigl
 **/SHTOOLS
 **/triangle_berkeley
+
+**/result
+**/relight
+**/data

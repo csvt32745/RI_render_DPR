@@ -69,19 +69,27 @@ class getObj_3DDFA():
         vertex_normal = get_normal(vertex_list, face_list)
 
         fid = open(saveFileName, 'w')
-        print('mtllib {:}'.format(self.mtl_path), file=fid)
+        # print('mtllib {:}'.format(self.mtl_path), file=fid)
 
         # print normals and vertex
+        lines = []
         for i in range(vertex_list.shape[0]):
+            # lines.append('v %0.6f %0.6f %0.6f\n' % tuple(vertex_list[i]))
+            # lines.append('vn %0.6f %0.6f %0.6f\n' % tuple(vertex_normal[i]))
+
             print('v %0.6f %0.6f %0.6f' % tuple(vertex_list[i]), file=fid)
             print('vn %0.6f %0.6f %0.6f' % tuple(vertex_normal[i]), file=fid)
-        print('usemtl material_0', file=fid)
+
+        # print('usemtl material_0', file=fid)
 
         # print vertex
         for item in self.uv_list:
+            # lines.append('vt %0.6f %0.6f\n' % tuple(item))
             print('vt %0.6f %0.6f' % tuple(item), file=fid)
 
         # print face
         for face in face_list:
+            # lines.append('f %d/%d/%d %d/%d/%d %d/%d/%d\n' % (face[0], face[0], face[0], face[1], face[1], face[1], face[2], face[2], face[2]))
             print('f %d/%d/%d %d/%d/%d %d/%d/%d' % (face[0], face[0], face[0], face[1], face[1], face[1], face[2], face[2], face[2]), file=fid)
+        # fid.writelines(lines)
         fid.close()

@@ -30,9 +30,11 @@ for item in faceList:
     tx_coord = np.transpose(tx_coord, (1,0))
 
     UV, depth_buffer = get_warpedUV(vertex, faces-1, tx_coord, imgHeight, imgWidth, c=3)
+    
     vis_img = (UV*255.0).astype(np.uint8)
     cv2.imwrite(os.path.join(saveSubFolder, 'UV_warp.png'), vis_img)
     UV = UV[:,:,0:2]
+    np.save(os.path.join(saveSubFolder, 'UV_warp.npy'), UV)
     UV = np.reshape(UV, (-1, 2))
 
     get_warpedImage(UV, imgWidth, imgHeight, subFolder, saveSubFolder)

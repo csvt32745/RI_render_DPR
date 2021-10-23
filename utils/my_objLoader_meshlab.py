@@ -96,8 +96,8 @@ class OBJ:
             p_t = self.faces_all[i][2]
             for (j, p) in enumerate(p_v):
                 tn = self.normals[p_n[j]]
-                print(tn)
-                print(p)
+                # print(tn) # why printing??
+                # print(p)
                 tmp_normals[p] = np.array(tn)
 
                 tt = self.texcoords[p_t[j]]

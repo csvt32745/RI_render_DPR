@@ -125,7 +125,7 @@ class extrapolateNormal():
 
         # find the boundary of the face region
         # NOTE: different version of opencv have different way of using findContours
-        _, contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+        contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
         ori_img = image.copy()
         cv2.drawContours(ori_img, contours[0], -1, (0,255,0), 3)
         #cv2.imwrite('tmp_contour.png', ori_img)

@@ -94,9 +94,9 @@ def my_render(imgName, objName, modelFolder, saveFolder):
     '''
     obj = loadObj(objName)
     # normalize z-buffer
-    min_z = np.min(obj.vertex[:,2])
-    max_z = np.max(obj.vertex[:,2])
-    obj.vertex[:,2] = (obj.vertex[:,2] - min_z)/(max_z - min_z)
+    # min_z = np.min(obj.vertex[:,2])
+    # max_z = np.max(obj.vertex[:,2])
+    # obj.vertex[:,2] = (obj.vertex[:,2] - min_z)/(max_z - min_z)
 
     #texture = loadTexture(obj, os.path.join(modelFolder, 'UV.png'), 
     #        os.path.join(modelFolder, 'label_v4.png'), os.path.join(modelFolder, 'color_label_v4.png'))
@@ -181,4 +181,4 @@ def my_render(imgName, objName, modelFolder, saveFolder):
     # save as png for visualization
     vis_img = my_visualizeImages(label_index.astype(np.float), 'label')*mask
     cv2.imwrite(saveName + '.png', vis_img.astype(np.uint8))
-    print ('time to save file is %s' % (time.time() - t_time))
+    # print ('time to save file is %s' % (time.time() - t_time))

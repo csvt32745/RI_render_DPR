@@ -37,7 +37,7 @@ baseFolder = '../useful_code/3DDFA/'
 class fit_3DDFA():
     def __init__(self, mode='gpu'):
         # load model
-        checkpoint_fp = os.path.join(baseFolder, 'models/phase1_wpdc_vdc_v2.pth.tar')
+        checkpoint_fp = os.path.join(baseFolder, 'models/phase1_wpdc_vdc.pth.tar')
         checkpoint = torch.load(checkpoint_fp, map_location=lambda storage, loc: storage)['state_dict']
         self.model = getattr(mobilenet_v1, 'mobilenet_1')(num_classes=62)  # 62 = 12(pose) + 40(shape) +10(expression)
 
@@ -54,72 +54,89 @@ class fit_3DDFA():
 
         # load dlib model for face detection and landmark  for face cropping
         dlib_landmark_model = os.path.join(baseFolder, 'models/shape_predictor_68_face_landmarks.dat')
+        dlib_detector_model = os.path.join(baseFolder, 'models/mmod_human_face_detector.dat')
         self.face_regressor = dlib.shape_predictor(dlib_landmark_model)
-        self.face_detector = dlib.get_frontal_face_detector()
+        self.face_detector_mirror = dlib.get_frontal_face_detector()
+        self.face_detector = dlib.cnn_face_detection_model_v1(dlib_detector_model)
+        
 
         self.tri = sio.loadmat(os.path.join(baseFolder, 'visualize/tri.mat'))['tri']
         self.transform = transforms.Compose([ToTensorGjz(), NormalizeGjz(mean=127.5, std=128)])
 
 
-    def forward(self, img_ori, saveFolder, imgName):
-        rects = self.face_detector(img_ori, 1)
-        if len(rects) == 0:
-            return
-        pts_res = []
-        Ps = []  # Camera matrix collection
-        poses = []  # pose collection, [todo: validate it]
-        vertices_lst = []  # store multiple face vertices
-        ind = 0
-        suffix = saveFolder
+    def forward(self, img_oris, saveFolders, imgNames, fileNames):
+        rects_list = self.face_detector(img_oris, 1)
+        defected_list = []
+        # rects_list = [self.face_detector_mirror(img_ori, 3) for img_ori in img_oris]
+        for rects, img_ori, saveFolder, imgName, fileName in zip(rects_list, img_oris, saveFolders, imgNames, fileNames):
 
-        rect = rects[0]
-        # whether use dlib landmark to crop image, if not, use only face bbox to calc roi bbox for cropping
-        # - use landmark for cropping
-        pts = self.face_regressor(img_ori, rect).parts()
-        pts = np.array([[pt.x, pt.y] for pt in pts]).T  # detected landmarks, should record this
-        roi_box = parse_roi_box_from_landmark(pts)
-        img = crop_img(img_ori, roi_box)
+            if len(rects) == 0:
+                print(f"Warn: {imgName} can not detect rect")
+                defected_list.append(fileName)
+                continue
 
-        # forward: one step
-        img = cv2.resize(img, dsize=(STD_SIZE, STD_SIZE), interpolation=cv2.INTER_LINEAR)
-        input = self.transform(img).unsqueeze(0)
-        with torch.no_grad():
-            if self.mode == 'gpu':
-                input = input.cuda()
-            param = self.model(input)
-            param = param.squeeze().cpu().numpy().flatten().astype(np.float32)
+            pts_res = []
+            Ps = []  # Camera matrix collection
+            poses = []  # pose collection, [todo: validate it]
+            vertices_lst = []  # store multiple face vertices
+            # ind = 0
+            # suffix = saveFolder
+            # print(rect)
+            # rect = rects[0]
+            rect = rects[0].rect
 
-        # 68 pts
-        pts68 = predict_68pts(param, roi_box)
+            # whether use dlib landmark to crop image, if not, use only face bbox to calc roi bbox for cropping
+            # - use landmark for cropping
+            pts = self.face_regressor(img_ori, rect).parts()
+            pts = np.array([[pt.x, pt.y] for pt in pts]).T  # detected landmarks, should record this
+            roi_box = parse_roi_box_from_landmark(pts)
+            img = crop_img(img_ori, roi_box)
 
-        #pts_res.append(pts68)
-        pts_res.append(pts)
-        P, pose = parse_pose(param)
-        Ps.append(P)
-        poses.append(pose)
+            # forward: one step
+            img = cv2.resize(img, dsize=(STD_SIZE, STD_SIZE), interpolation=cv2.INTER_LINEAR)
+            input = self.transform(img).unsqueeze(0)
+            with torch.no_grad():
+                if self.mode == 'gpu':
+                    input = input.cuda()
+                param = self.model(input)
+                param = param.squeeze().cpu().numpy().flatten().astype(np.float32)
 
-        # dense face 3d vertices
-        vertices = predict_dense(param, roi_box)
-        vertices_lst.append(vertices)
+            # 68 pts
+            pts68 = predict_68pts(param, roi_box)
 
-        # save projected 3D points
-        wfp = '{}_projected.txt'.format(os.path.join(saveFolder, imgName))
-        np.savetxt(wfp, pts68, fmt='%.3f')
-        #print('Save 68 3d landmarks to {}'.format(wfp))
+            #pts_res.append(pts68)
+            pts_res.append(pts)
+            P, pose = parse_pose(param)
+            Ps.append(P)
+            poses.append(pose)
 
-        wfp = '{}_detected.txt'.format(os.path.join(saveFolder, imgName))
-        np.savetxt(wfp, pts, fmt='%.3f')
-        #print('Save 68 3d landmarks to {}'.format(wfp))
+            # dense face 3d vertices
+            vertices = predict_dense(param, roi_box)
+            vertices_lst.append(vertices)
 
-        # save obj file
-        wfp = '{}.obj'.format(os.path.join(saveFolder, imgName))
-        colors = get_colors(img_ori, vertices)
-        write_obj_with_colors(wfp, vertices, self.tri, colors)
-        #print('Dump obj with sampled texture to {}'.format(wfp))
+            # save files
+            if not os.path.exists(saveFolder):
+                os.makedirs(saveFolder)
 
-        wfp = os.path.join(saveFolder, imgName) + '_depth.png'
-        depths_img = cget_depths_image(img_ori, vertices_lst, self.tri - 1)  # cython version
-        cv2.imwrite(wfp, depths_img)
-        #print('Dump to {}'.format(wfp))
+            # save projected 3D points
+            wfp = '{}_projected.txt'.format(os.path.join(saveFolder, imgName))
+            np.savetxt(wfp, pts68, fmt='%.3f')
+            #print('Save 68 3d landmarks to {}'.format(wfp))
 
-        draw_landmarks(img_ori, pts_res, wfp=os.path.join(saveFolder, imgName)+'_3DDFA.png', show_flg=False)
+            wfp = '{}_detected.txt'.format(os.path.join(saveFolder, imgName))
+            np.savetxt(wfp, pts, fmt='%.3f')
+            #print('Save 68 3d landmarks to {}'.format(wfp))
+
+            # save obj file
+            wfp = '{}.obj'.format(os.path.join(saveFolder, imgName))
+            colors = get_colors(img_ori, vertices)
+            write_obj_with_colors(wfp, vertices, self.tri, colors)
+            #print('Dump obj with sampled texture to {}'.format(wfp))
+
+            wfp = os.path.join(saveFolder, imgName) + '_depth.png'
+            depths_img = cget_depths_image(img_ori, vertices_lst, self.tri - 1)  # cython version
+            cv2.imwrite(wfp, depths_img)
+            #print('Dump to {}'.format(wfp))
+
+            draw_landmarks(img_ori, pts_res, wfp=os.path.join(saveFolder, imgName)+'_3DDFA.png', show_flg=False)
+        return defected_list

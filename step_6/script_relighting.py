@@ -152,9 +152,9 @@ def process_normal(normal):
     return normal
 
 def script_relighting(numImgs):
-    lightPath = 'processed_bip2019'
+    lightPath = '../processed_lighting_v2'
     lightList = []
-    with open('lighting.list')) as f:
+    with open('../lighting.list') as f:
         for line in f:
             tmp = line.strip()
             lightList.append(tmp)
