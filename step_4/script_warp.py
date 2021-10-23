@@ -3,6 +3,7 @@ from my_loadMesh import *
 import os
 import numpy as np
 import cv2
+from tqdm import tqdm
 
 faceList = []
 with open(os.path.join('../data.list')) as f:
@@ -12,12 +13,14 @@ with open(os.path.join('../data.list')) as f:
 imgPath = '../data'
 savePath = '../result'
 
-for item in faceList:
+for item in tqdm(faceList, ascii=True, dynamic_ncols=True):
     imgName = item.split('.')[0]
     subFolder = os.path.join(savePath, imgName, 'render')
     saveSubFolder = os.path.join(savePath, imgName, 'warp')
     if not os.path.exists(saveSubFolder):
         os.makedirs(saveSubFolder)
+    elif os.path.isfile(os.path.join(saveSubFolder, 'combine_albedo.png')):
+            continue
 
     img = cv2.imread(os.path.join(imgPath, item))
     meshName = os.path.join(subFolder, 'arap.obj')
