@@ -26,9 +26,9 @@ fit_3DMM = fit_3DDFA('gpu')
 #     fit_3DMM.forward(img, subFolder, item.split('.')[0])
 
 batch = 10
-exist_faces = [i+".png" for i in os.listdir(savePath)]
-faceList = set(faceList)
-faceList = (faceList ^ set(exist_faces))
+# exist_faces = [i+".png" for i in os.listdir(savePath)]
+# faceList = set(faceList)
+# faceList = (faceList ^ set(exist_faces))
 
 faceList = list(faceList)
 print(f"# of face: {len(faceList)}")
